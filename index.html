@@ -1,0 +1,1447 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Web Drum Studio | Apps Hub</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;800&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', '"Noto Sans JP"', 'sans-serif'],
+          },
+          gridTemplateColumns: {
+            '16': 'repeat(16, minmax(0, 1fr))',
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    body {
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    /* Drum Pad Neon Glow */
+    .pad-active {
+      transform: scale(0.95);
+      box-shadow: 0 0 28px currentColor !important;
+      filter: brightness(1.4);
+    }
+    /* SVG Drum Hit Animations */
+    .cymbal-hit {
+      animation: cymbalWobble 0.35s ease-out;
+      transform-origin: center;
+      filter: drop-shadow(0 0 20px rgba(251, 191, 36, 0.95)) brightness(1.35);
+    }
+    .drum-hit {
+      animation: drumBounce 0.22s cubic-bezier(0.1, 0.9, 0.2, 1);
+      transform-origin: center;
+      filter: drop-shadow(0 0 22px rgba(99, 102, 241, 0.95)) brightness(1.4);
+    }
+    @keyframes cymbalWobble {
+      0% { transform: scale(0.96) rotate(0deg); }
+      25% { transform: scale(1.05) rotate(4.5deg); }
+      50% { transform: scale(0.98) rotate(-3.5deg); }
+      75% { transform: scale(1.02) rotate(1.5deg); }
+      100% { transform: scale(1) rotate(0deg); }
+    }
+    @keyframes drumBounce {
+      0% { transform: scale(0.92); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+    /* Hide scrollbars */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    /* Custom Range Slider */
+    input[type=range]::-webkit-slider-thumb {
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 9999px;
+      background: #818cf8;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(129, 140, 248, 0.9);
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans select-none antialiased">
+
+  <!-- ================= 統一ヘッダー (Portal Header) ================= -->
+  <header class="w-full bg-slate-900/90 border-b border-slate-800 sticky top-0 z-40 backdrop-blur-md">
+    <div class="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
+      <!-- Apps Hub Back Link -->
+      <a href="../" class="inline-flex items-center gap-1.5 text-xs font-bold text-slate-400 hover:text-indigo-400 transition-colors py-1.5 px-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700/60">
+        <i class="fa-solid fa-arrow-left text-[11px]"></i>
+        <span>Apps Hub</span>
+      </a>
+
+      <!-- App Title -->
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400 text-sm shadow-[0_0_12px_rgba(99,102,241,0.25)]">
+          <i class="fa-solid fa-drum"></i>
+        </div>
+        <div class="leading-tight">
+          <h1 class="text-sm font-extrabold tracking-tight text-white flex items-center gap-1.5">
+            Web Drum Studio
+            <span class="text-[10px] px-1.5 py-0.2 text-indigo-300 font-mono bg-indigo-950/80 rounded border border-indigo-700/50">PRO</span>
+          </h1>
+          <p class="text-[10px] text-slate-400 hidden sm:block">完全ローカル・Web Audio音源合成＆リズムスタジオ</p>
+        </div>
+      </div>
+
+      <!-- Quick Actions (Keybind & Volume) -->
+      <div class="flex items-center gap-2">
+        <button id="openKeymapBtn" class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 hover:text-white border border-slate-700 flex items-center gap-1.5 transition active:scale-95" title="キーボード割当設定">
+          <i class="fa-regular fa-keyboard text-indigo-400"></i>
+          <span class="hidden sm:inline">キー割当</span>
+        </button>
+        <div class="flex items-center gap-1.5 bg-slate-900 px-2 py-1 rounded-xl border border-slate-800 text-xs text-slate-400">
+          <button id="muteBtn" onclick="toggleMute()" class="hover:text-white transition">
+            <i id="volumeIcon" class="fa-solid fa-volume-high text-slate-400 text-[11px]"></i>
+          </button>
+          <input type="range" id="masterVolume" min="0" max="1" step="0.05" value="0.8" class="w-16 h-1 bg-slate-700 rounded-lg cursor-pointer">
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ================= メインワークスペース ================= -->
+  <main class="flex-1 max-w-5xl w-full mx-auto p-3 sm:p-5 flex flex-col gap-4">
+
+    <!-- Top Navigation & Shared Sync Controls -->
+    <div class="bg-slate-900/80 border border-slate-800/90 rounded-2xl p-2.5 sm:p-3 shadow-xl flex flex-wrap items-center justify-between gap-3">
+      
+      <!-- 4 Mutually Exclusive Navigation Tabs -->
+      <div class="inline-flex bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs font-bold w-full sm:w-auto overflow-x-auto no-scrollbar gap-1">
+        <button id="tabBtn-kit" onclick="switchExclusiveTab('kit')" class="tab-btn px-3 py-1.5 rounded-lg bg-indigo-600 text-white shadow transition flex items-center justify-center gap-1.5 whitespace-nowrap">
+          <i class="fa-solid fa-drum"></i>
+          <span>ドラムセット</span>
+        </button>
+        <button id="tabBtn-pads" onclick="switchExclusiveTab('pads')" class="tab-btn px-3 py-1.5 rounded-lg text-slate-400 hover:text-slate-200 transition flex items-center justify-center gap-1.5 whitespace-nowrap">
+          <i class="fa-solid fa-grip"></i>
+          <span>フィンガーパッド</span>
+        </button>
+        <button id="tabBtn-seq" onclick="switchExclusiveTab('seq')" class="tab-btn px-3 py-1.5 rounded-lg text-slate-400 hover:text-slate-200 transition flex items-center justify-center gap-1.5 whitespace-nowrap">
+          <i class="fa-solid fa-sliders"></i>
+          <span>シーケンサー</span>
+        </button>
+        <button id="tabBtn-score" onclick="switchExclusiveTab('score')" class="tab-btn px-3 py-1.5 rounded-lg text-slate-400 hover:text-slate-200 transition flex items-center justify-center gap-1.5 whitespace-nowrap">
+          <i class="fa-solid fa-graduation-cap"></i>
+          <span>リズム譜</span>
+        </button>
+      </div>
+
+      <!-- Shared Playback & Tempo Controls (Synchronized across all tabs) -->
+      <div class="flex items-center flex-wrap gap-2 w-full sm:w-auto justify-between sm:justify-end">
+        <!-- Global Sequencer Loop Play/Pause -->
+        <button id="globalPlayBtn" class="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-600/30 transition flex items-center gap-1.5 active:scale-95">
+          <i id="globalPlayIcon" class="fa-solid fa-play"></i>
+          <span id="globalPlayText">ループ再生</span>
+        </button>
+
+        <!-- BPM Slider & Tap Tempo -->
+        <div class="flex items-center gap-2 bg-slate-950 px-2.5 py-1 rounded-xl border border-slate-800">
+          <span class="text-[11px] font-bold text-slate-400">BPM</span>
+          <span id="bpmValue" class="text-sm font-extrabold text-indigo-400 font-mono w-8 text-center">110</span>
+          <input type="range" id="bpmSlider" min="40" max="240" value="110" class="w-16 sm:w-20 h-1.5 bg-slate-800 rounded-lg cursor-pointer">
+          <button id="tapTempoBtn" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[10px] font-bold text-slate-300 active:scale-95 transition">TAP</button>
+        </div>
+
+        <!-- Metronome Toggle -->
+        <button id="metroToggleBtn" class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 border border-slate-700 text-xs font-semibold flex items-center gap-1 transition">
+          <i class="fa-solid fa-stopwatch text-slate-400"></i>
+          <span id="metroText">クリック: OFF</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ================= TAB 1: 🥁 ドラムセット (Interactive SVG Drum Kit) ================= -->
+    <section id="panel-kit" class="bg-slate-900/70 border border-slate-800 rounded-3xl p-3 sm:p-5 shadow-2xl relative overflow-hidden">
+      <div class="flex items-center justify-between text-xs px-2 mb-2 text-slate-400">
+        <span class="flex items-center gap-1.5">
+          <i class="fa-solid fa-hand-pointer text-indigo-400"></i>
+          <span>各太鼓やシンバルを直接タップ・クリックまたはキー打鍵で演奏</span>
+        </span>
+        <span class="text-[11px] text-slate-500 font-mono">SVG Vector Art</span>
+      </div>
+
+      <!-- SVG Drum Kit Canvas Layout -->
+      <div class="w-full flex justify-center items-center py-2">
+        <svg id="drumKitSvg" viewBox="0 0 900 520" class="w-full max-w-3xl h-auto filter drop-shadow-[0_12px_24px_rgba(0,0,0,0.6)] select-none">
+          <defs>
+            <!-- Cymbal Metallic Gold Gradient -->
+            <radialGradient id="cymbalGrad" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="#fef08a" />
+              <stop offset="25%" stop-color="#eab308" />
+              <stop offset="60%" stop-color="#ca8a04" />
+              <stop offset="85%" stop-color="#a16207" />
+              <stop offset="100%" stop-color="#713f12" />
+            </radialGradient>
+            <!-- Drum Head Gradients -->
+            <radialGradient id="snareGrad" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="#ffffff" />
+              <stop offset="70%" stop-color="#e2e8f0" />
+              <stop offset="100%" stop-color="#94a3b8" />
+            </radialGradient>
+            <radialGradient id="tomGrad" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="#f8fafc" />
+              <stop offset="75%" stop-color="#cbd5e1" />
+              <stop offset="100%" stop-color="#64748b" />
+            </radialGradient>
+            <radialGradient id="kickGrad" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="#1e293b" />
+              <stop offset="70%" stop-color="#0f172a" />
+              <stop offset="100%" stop-color="#020617" />
+            </radialGradient>
+            <!-- Rim Chrome Gradient -->
+            <linearGradient id="chromeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#94a3b8" />
+              <stop offset="50%" stop-color="#f8fafc" />
+              <stop offset="100%" stop-color="#475569" />
+            </linearGradient>
+          </defs>
+
+          <!-- Stage Shadow & Hardware Stands Base -->
+          <ellipse cx="450" cy="300" rx="400" ry="180" fill="#000000" opacity="0.45" />
+
+          <!-- Hardware stand lines connecting parts -->
+          <g stroke="#334155" stroke-width="6" stroke-linecap="round">
+            <line x1="180" y1="120" x2="220" y2="340" />
+            <line x1="740" y1="160" x2="680" y2="340" />
+            <line x1="370" y1="170" x2="450" y2="240" />
+            <line x1="530" y1="170" x2="450" y2="240" />
+            <line x1="280" y1="320" x2="310" y2="400" />
+          </g>
+
+          <!-- 1. BASS DRUM (Kick) -->
+          <g id="svg-part-kick" class="cursor-pointer transition-transform" data-part="kick">
+            <circle cx="450" cy="270" r="145" fill="url(#chromeGrad)" stroke="#1e293b" stroke-width="4" />
+            <circle cx="450" cy="270" r="136" fill="#0f172a" />
+            <circle cx="450" cy="270" r="126" fill="url(#kickGrad)" stroke="#334155" stroke-width="3" />
+            <circle cx="450" cy="270" r="100" fill="none" stroke="#38bdf8" stroke-opacity="0.2" stroke-width="2" stroke-dasharray="6 4" />
+            <circle cx="510" cy="320" r="28" fill="#020617" stroke="#475569" stroke-width="3" />
+            <text x="450" y="260" text-anchor="middle" fill="#94a3b8" font-size="16" font-weight="800" letter-spacing="3">KICK BASS</text>
+            <g transform="translate(450, 285)">
+              <rect x="-26" y="-12" width="52" height="24" rx="8" fill="#1e1b4b" stroke="#6366f1" stroke-width="1.5" />
+              <text id="badge-kit-kick" x="0" y="4" text-anchor="middle" fill="#c7d2fe" font-size="12" font-weight="bold" font-family="monospace">SPACE</text>
+            </g>
+          </g>
+
+          <!-- 2. HIGH TOM -->
+          <g id="svg-part-tom_high" class="cursor-pointer transition-transform" data-part="tom_high">
+            <circle cx="365" cy="165" r="72" fill="url(#chromeGrad)" stroke="#1e293b" stroke-width="3" />
+            <circle cx="365" cy="165" r="66" fill="#1e293b" />
+            <circle cx="365" cy="165" r="62" fill="url(#tomGrad)" stroke="#64748b" stroke-width="1" />
+            <circle cx="365" cy="95" r="4" fill="#cbd5e1" />
+            <circle cx="365" cy="235" r="4" fill="#cbd5e1" />
+            <circle cx="295" cy="165" r="4" fill="#cbd5e1" />
+            <circle cx="435" cy="165" r="4" fill="#cbd5e1" />
+            <text x="365" y="155" text-anchor="middle" fill="#334155" font-size="13" font-weight="bold">HI TOM</text>
+            <g transform="translate(365, 175)">
+              <rect x="-18" y="-10" width="36" height="20" rx="6" fill="#1e1b4b" stroke="#8b5cf6" stroke-width="1.5" />
+              <text id="badge-kit-tom_high" x="0" y="4" text-anchor="middle" fill="#e9d5ff" font-size="11" font-weight="bold" font-family="monospace">W</text>
+            </g>
+          </g>
+
+          <!-- 3. LOW TOM -->
+          <g id="svg-part-tom_low" class="cursor-pointer transition-transform" data-part="tom_low">
+            <circle cx="535" cy="165" r="78" fill="url(#chromeGrad)" stroke="#1e293b" stroke-width="3" />
+            <circle cx="535" cy="165" r="72" fill="#1e293b" />
+            <circle cx="535" cy="165" r="68" fill="url(#tomGrad)" stroke="#64748b" stroke-width="1" />
+            <circle cx="535" cy="90" r="4" fill="#cbd5e1" />
+            <circle cx="535" cy="240" r="4" fill="#cbd5e1" />
+            <circle cx="460" cy="165" r="4" fill="#cbd5e1" />
+            <circle cx="610" cy="165" r="4" fill="#cbd5e1" />
+            <text x="535" y="155" text-anchor="middle" fill="#334155" font-size="13" font-weight="bold">LOW TOM</text>
+            <g transform="translate(535, 175)">
+              <rect x="-18" y="-10" width="36" height="20" rx="6" fill="#1e1b4b" stroke="#8b5cf6" stroke-width="1.5" />
+              <text id="badge-kit-tom_low" x="0" y="4" text-anchor="middle" fill="#e9d5ff" font-size="11" font-weight="bold" font-family="monospace">E</text>
+            </g>
+          </g>
+
+          <!-- 4. SNARE DRUM -->
+          <g id="svg-part-snare" class="cursor-pointer transition-transform" data-part="snare">
+            <circle cx="280" cy="330" r="85" fill="url(#chromeGrad)" stroke="#0f172a" stroke-width="4" />
+            <circle cx="280" cy="330" r="78" fill="#334155" />
+            <circle cx="280" cy="330" r="73" fill="url(#snareGrad)" stroke="#94a3b8" stroke-width="2" />
+            <circle cx="280" cy="330" r="50" fill="none" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="3 3" />
+            <circle cx="280" cy="248" r="4.5" fill="#f8fafc" />
+            <circle cx="280" cy="412" r="4.5" fill="#f8fafc" />
+            <circle cx="198" cy="330" r="4.5" fill="#f8fafc" />
+            <circle cx="362" cy="330" r="4.5" fill="#f8fafc" />
+            <text x="280" y="320" text-anchor="middle" fill="#0f172a" font-size="14" font-weight="800">SNARE</text>
+            <g transform="translate(280, 342)">
+              <rect x="-18" y="-10" width="36" height="20" rx="6" fill="#082f49" stroke="#06b6d4" stroke-width="1.5" />
+              <text id="badge-kit-snare" x="0" y="4" text-anchor="middle" fill="#a5f3fc" font-size="11" font-weight="bold" font-family="monospace">S</text>
+            </g>
+          </g>
+
+          <!-- 5. FLOOR TOM / CLAP -->
+          <g id="svg-part-clap" class="cursor-pointer transition-transform" data-part="clap">
+            <circle cx="680" cy="330" r="88" fill="url(#chromeGrad)" stroke="#0f172a" stroke-width="4" />
+            <circle cx="680" cy="330" r="81" fill="#1e293b" />
+            <circle cx="680" cy="330" r="76" fill="url(#tomGrad)" stroke="#64748b" stroke-width="2" />
+            <circle cx="680" cy="330" r="52" fill="none" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4 4" />
+            <circle cx="680" cy="245" r="4.5" fill="#f8fafc" />
+            <circle cx="680" cy="415" r="4.5" fill="#f8fafc" />
+            <circle cx="595" cy="330" r="4.5" fill="#f8fafc" />
+            <circle cx="765" cy="330" r="4.5" fill="#f8fafc" />
+            <text x="680" y="320" text-anchor="middle" fill="#1e293b" font-size="14" font-weight="800">CLAP / FL-TOM</text>
+            <g transform="translate(680, 342)">
+              <rect x="-18" y="-10" width="36" height="20" rx="6" fill="#500724" stroke="#ec4899" stroke-width="1.5" />
+              <text id="badge-kit-clap" x="0" y="4" text-anchor="middle" fill="#fbcfe8" font-size="11" font-weight="bold" font-family="monospace">Q</text>
+            </g>
+          </g>
+
+          <!-- 6. HI-HAT (Closed) -->
+          <g id="svg-part-hihat_close" class="cursor-pointer transition-transform" data-part="hihat_close">
+            <circle cx="150" cy="260" r="82" fill="url(#cymbalGrad)" stroke="#78350f" stroke-width="3" />
+            <circle cx="150" cy="260" r="65" fill="none" stroke="#fef08a" stroke-opacity="0.3" stroke-width="1" />
+            <circle cx="150" cy="260" r="45" fill="none" stroke="#fef08a" stroke-opacity="0.35" stroke-width="1" />
+            <circle cx="150" cy="260" r="22" fill="#ca8a04" stroke="#eab308" stroke-width="1.5" />
+            <circle cx="150" cy="260" r="7" fill="#451a03" />
+            <text x="150" y="246" text-anchor="middle" fill="#451a03" font-size="12" font-weight="bold">HI-HAT (CH)</text>
+            <g transform="translate(150, 275)">
+              <rect x="-18" y="-10" width="36" height="20" rx="6" fill="#451a03" stroke="#f59e0b" stroke-width="1.5" />
+              <text id="badge-kit-hihat_close" x="0" y="4" text-anchor="middle" fill="#fef08a" font-size="11" font-weight="bold" font-family="monospace">A</text>
+            </g>
+          </g>
+
+          <!-- 7. HI-HAT OPEN PEDAL TRIGGER -->
+          <g id="svg-part-hihat_open" class="cursor-pointer transition-transform" data-part="hihat_open">
+            <circle cx="105" cy="335" r="32" fill="#451a03" stroke="#eab308" stroke-width="2" opacity="0.9" />
+            <text x="105" y="328" text-anchor="middle" fill="#fef08a" font-size="10" font-weight="bold">OPEN</text>
+            <g transform="translate(105, 345)">
+              <rect x="-16" y="-8" width="32" height="16" rx="4" fill="#78350f" stroke="#fbbf24" stroke-width="1" />
+              <text id="badge-kit-hihat_open" x="0" y="4" text-anchor="middle" fill="#fef08a" font-size="9" font-weight="bold" font-family="monospace">F</text>
+            </g>
+          </g>
+
+          <!-- 8. CRASH CYMBAL -->
+          <g id="svg-part-crash" class="cursor-pointer transition-transform" data-part="crash">
+            <circle cx="180" cy="110" r="95" fill="url(#cymbalGrad)" stroke="#78350f" stroke-width="3" />
+            <circle cx="180" cy="110" r="78" fill="none" stroke="#fef08a" stroke-opacity="0.35" stroke-width="1" />
+            <circle cx="180" cy="110" r="52" fill="none" stroke="#fef08a" stroke-opacity="0.4" stroke-width="1" />
+            <circle cx="180" cy="110" r="24" fill="#ca8a04" stroke="#eab308" stroke-width="2" />
+            <circle cx="180" cy="110" r="7" fill="#451a03" />
+            <text x="180" y="98" text-anchor="middle" fill="#451a03" font-size="13" font-weight="800">CRASH</text>
+            <g transform="translate(180, 125)">
+              <rect x="-18" y="-10" width="36" height="20" rx="6" fill="#064e3b" stroke="#10b981" stroke-width="1.5" />
+              <text id="badge-kit-crash" x="0" y="4" text-anchor="middle" fill="#a7f3d0" font-size="11" font-weight="bold" font-family="monospace">R</text>
+            </g>
+          </g>
+        </svg>
+      </div>
+    </section>
+
+    <!-- ================= TAB 2: ⏹️ フィンガーパッド (MPC Style Drum Pads) ================= -->
+    <section id="panel-pads" class="hidden space-y-3">
+      <div class="flex items-center justify-between text-xs px-1 text-slate-400">
+        <span class="flex items-center gap-1.5">
+          <i class="fa-solid fa-circle-info text-indigo-400"></i>
+          <span>8ドラムパッド（ネオンカラー・低遅延自前合成音・マルチタッチ対応）</span>
+        </span>
+        <span class="text-[11px] text-slate-500 font-mono">MPC Pad Mode</span>
+      </div>
+
+      <!-- 8-Pad Grid Container -->
+      <div id="padsGrid" class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+        <!-- Rendered dynamically by JavaScript -->
+      </div>
+    </section>
+
+    <!-- ================= TAB 3: 🎛️ シーケンサー (16-Step Rhythm Sequencer) ================= -->
+    <section id="panel-seq" class="hidden bg-slate-900/60 border border-slate-800 rounded-2xl p-3 sm:p-5 shadow-xl space-y-4">
+      <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 pb-3">
+        <div class="flex items-center gap-2">
+          <h2 class="text-sm font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-sliders text-indigo-400"></i>
+            16ステップ ドラムマシン
+          </h2>
+          <span class="text-[11px] text-slate-400 hidden sm:inline">16分音符分解能・先行スケジューリング</span>
+        </div>
+
+        <!-- Pattern Presets -->
+        <div class="flex items-center gap-1.5 text-xs flex-wrap">
+          <span class="text-slate-400 text-[11px] hidden sm:inline">プリセット:</span>
+          <button onclick="loadPatternPreset('basic8')" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700/60 transition active:scale-95">王道8ビート</button>
+          <button onclick="loadPatternPreset('fourFloor')" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700/60 transition active:scale-95">4つ打ち</button>
+          <button onclick="loadPatternPreset('funk16')" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700/60 transition active:scale-95">16分ファンク</button>
+          <button onclick="clearSequencer()" class="px-2.5 py-1 rounded-lg bg-rose-950/60 hover:bg-rose-900/70 text-rose-300 border border-rose-900/50 text-xs font-medium transition active:scale-95">クリア</button>
+        </div>
+      </div>
+
+      <!-- Sequencer Grid -->
+      <div class="overflow-x-auto no-scrollbar">
+        <div class="min-w-[640px] space-y-2" id="sequencerGrid">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <!-- Step Counter Progress Dots -->
+      <div class="overflow-x-auto no-scrollbar">
+        <div class="min-w-[640px] flex items-center gap-1.5 pt-1 pl-24" id="stepIndicatorRow">
+          <!-- 16 indicator dots -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= TAB 4: 📖 リズム譜 (Drum Beginner Limb Coordination Viewer) ================= -->
+    <section id="panel-score" class="hidden bg-slate-900/60 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xl space-y-4">
+      <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 pb-3">
+        <div>
+          <h2 class="text-sm font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-graduation-cap text-indigo-400"></i>
+            ドラム初心者の手足連動ビューア
+          </h2>
+          <p class="text-[11px] text-slate-400 mt-0.5">「右手（ハイハット）」「左手（スネア）」「右足（キック）」の動きをリアルタイムに視覚化</p>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <select id="scorePatternSelect" onchange="changeScorePattern(this.value)" class="bg-slate-800 border border-slate-700 text-xs rounded-xl px-2.5 py-1.5 text-slate-200 outline-none focus:border-indigo-500">
+            <option value="basic8">練習1：王道8ビート（基本）</option>
+            <option value="fourFloor">練習2：4つ打ちダンスビート</option>
+            <option value="funk16">練習3：シンコペーション16ビート</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Limb Coordination Cards with PROMINENT KEYBINDING BADGES -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3 text-center text-xs">
+        
+        <!-- Right Hand (Hi-Hat) -->
+        <div class="bg-slate-950/80 border border-amber-500/30 p-3 rounded-2xl flex flex-col items-center justify-between gap-2 shadow-lg shadow-amber-950/20">
+          <div class="flex items-center justify-center gap-1.5 text-amber-400 font-bold">
+            <i class="fa-solid fa-hand"></i>
+            <span>右手 (Right Hand)</span>
+          </div>
+          <div class="text-xs text-slate-300 font-semibold">ハイハット (Hi-Hat)</div>
+          <div class="flex items-center gap-1.5 bg-slate-900/90 px-2.5 py-1 rounded-xl border border-amber-500/40">
+            <span class="text-[10px] text-amber-300 font-medium">キー:</span>
+            <span id="score-badge-hihat" class="font-mono font-extrabold text-xs text-amber-300 bg-amber-950/80 px-2 py-0.5 rounded border border-amber-500/50">A</span>
+          </div>
+        </div>
+
+        <!-- Left Hand (Snare) -->
+        <div class="bg-slate-950/80 border border-cyan-500/30 p-3 rounded-2xl flex flex-col items-center justify-between gap-2 shadow-lg shadow-cyan-950/20">
+          <div class="flex items-center justify-center gap-1.5 text-cyan-400 font-bold">
+            <i class="fa-solid fa-hand"></i>
+            <span>左手 (Left Hand)</span>
+          </div>
+          <div class="text-xs text-slate-300 font-semibold">スネアドラム (Snare)</div>
+          <div class="flex items-center gap-1.5 bg-slate-900/90 px-2.5 py-1 rounded-xl border border-cyan-500/40">
+            <span class="text-[10px] text-cyan-300 font-medium">キー:</span>
+            <span id="score-badge-snare" class="font-mono font-extrabold text-xs text-cyan-300 bg-cyan-950/80 px-2 py-0.5 rounded border border-cyan-500/50">S</span>
+          </div>
+        </div>
+
+        <!-- Right Foot (Kick) -->
+        <div class="bg-slate-950/80 border border-rose-500/30 p-3 rounded-2xl flex flex-col items-center justify-between gap-2 shadow-lg shadow-rose-950/20">
+          <div class="flex items-center justify-center gap-1.5 text-rose-400 font-bold">
+            <i class="fa-solid fa-shoe-prints"></i>
+            <span>右足 (Right Foot)</span>
+          </div>
+          <div class="text-xs text-slate-300 font-semibold">バスドラム (Kick)</div>
+          <div class="flex items-center gap-1.5 bg-slate-900/90 px-2.5 py-1 rounded-xl border border-rose-500/40">
+            <span class="text-[10px] text-rose-300 font-medium">キー:</span>
+            <span id="score-badge-kick" class="font-mono font-extrabold text-xs text-rose-300 bg-rose-950/80 px-2 py-0.5 rounded border border-rose-500/50">SPACE</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Realtime Scrolling Drum Notation Staff (Canvas) -->
+      <div class="relative bg-slate-950 border border-slate-800 rounded-2xl p-3 sm:p-4 overflow-hidden shadow-inner">
+        <!-- Playhead guide line -->
+        <div class="absolute left-28 sm:left-32 top-0 bottom-0 w-0.5 bg-indigo-500 shadow-[0_0_12px_#6366f1] z-20 pointer-events-none"></div>
+        <div class="absolute left-24 sm:left-28 top-2 text-[9px] font-bold text-indigo-400 tracking-wider z-20 pointer-events-none">HIT</div>
+        
+        <!-- Track labels column -->
+        <div class="w-full flex">
+          <div class="w-24 sm:w-28 shrink-0 flex flex-col justify-around py-3 text-right pr-3 text-xs font-bold font-mono border-r border-slate-800/80">
+            <div class="text-amber-400 flex items-center justify-end gap-1"><span>Hi-Hat</span> <span class="text-[9px] text-slate-500">右手</span></div>
+            <div class="text-cyan-400 flex items-center justify-end gap-1"><span>Snare</span> <span class="text-[9px] text-slate-500">左手</span></div>
+            <div class="text-rose-400 flex items-center justify-end gap-1"><span>Kick</span> <span class="text-[9px] text-slate-500">右足</span></div>
+          </div>
+
+          <!-- Dynamic visual lanes -->
+          <div class="flex-1 relative overflow-hidden h-36" id="scoreLaneContainer">
+            <!-- Animated scrolling notes canvas -->
+            <canvas id="scoreCanvas" class="w-full h-full block"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ================= キー割り当てモーダル (Custom Keymap Modal) ================= -->
+  <div id="keymapModal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 w-full max-w-md shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 class="text-sm font-bold text-white flex items-center gap-2">
+          <i class="fa-regular fa-keyboard text-indigo-400"></i>
+          キーボード割り当て設定
+        </h3>
+        <button onclick="closeKeymapModal()" class="text-slate-400 hover:text-white text-xs">
+          <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+      </div>
+
+      <p class="text-xs text-slate-400 leading-relaxed">
+        変更したいドラムパーツのキー枠をクリックし、任意のキーを打鍵してください。設定はブラウザに自動保存され、全ての画面に即時反映されます。
+      </p>
+
+      <div class="grid grid-cols-2 gap-2 text-xs" id="keymapList">
+        <!-- Populated dynamically -->
+      </div>
+
+      <div class="flex justify-between items-center pt-3 border-t border-slate-800">
+        <button onclick="resetKeymapToDefault()" class="text-xs text-rose-400 hover:text-rose-300 font-semibold flex items-center gap-1 transition">
+          <i class="fa-solid fa-rotate-left"></i>
+          <span>初期配列に戻す</span>
+        </button>
+        <button onclick="closeKeymapModal()" class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md transition active:scale-95">
+          完了
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= フッター (Portal Standard Disclaimer) ================= -->
+  <footer class="mt-auto py-6 text-center border-t border-slate-800/80 bg-slate-950/50">
+    <div class="max-w-5xl mx-auto px-4">
+      <p class="text-[11px] text-slate-500">
+        ※個人開発プロトタイプにつき無保証・自己責任にてご利用ください（データ通信ゼロ・完全端末内音響合成）
+      </p>
+    </div>
+  </footer>
+
+  <!-- ================= スクリプト ================= -->
+  <script>
+    // --- ドラム音源定義 (Web Audio API 数式合成) ---
+    const DRUM_PARTS = [
+      { id: 'kick', name: 'Bass Drum (Kick)', short: 'KICK', limb: 'foot', color: '#f43f5e', glowClass: 'text-rose-500 border-rose-500/40 bg-rose-950/20 shadow-rose-950/40' },
+      { id: 'snare', name: 'Snare Drum', short: 'SNARE', limb: 'left', color: '#06b6d4', glowClass: 'text-cyan-400 border-cyan-500/40 bg-cyan-950/20 shadow-cyan-950/40' },
+      { id: 'hihat_close', name: 'Hi-Hat (Closed)', short: 'CH HAT', limb: 'right', color: '#f59e0b', glowClass: 'text-amber-400 border-amber-500/40 bg-amber-950/20 shadow-amber-950/40' },
+      { id: 'hihat_open', name: 'Hi-Hat (Open)', short: 'OH HAT', limb: 'right', color: '#eab308', glowClass: 'text-yellow-400 border-yellow-500/40 bg-yellow-950/20 shadow-yellow-950/40' },
+      { id: 'clap', name: 'Hand Clap / Fl-Tom', short: 'CLAP', limb: 'left', color: '#ec4899', glowClass: 'text-pink-400 border-pink-500/40 bg-pink-950/20 shadow-pink-950/40' },
+      { id: 'tom_high', name: 'High Tom', short: 'HI TOM', limb: 'right', color: '#a855f7', glowClass: 'text-violet-400 border-violet-500/40 bg-violet-950/20 shadow-violet-950/40' },
+      { id: 'tom_low', name: 'Low Tom (Mid)', short: 'LOW TOM', limb: 'left', color: '#8b5cf6', glowClass: 'text-purple-400 border-purple-500/40 bg-purple-950/20 shadow-purple-950/40' },
+      { id: 'crash', name: 'Crash Cymbal', short: 'CRASH', limb: 'right', color: '#10b981', glowClass: 'text-emerald-400 border-emerald-500/40 bg-emerald-950/20 shadow-emerald-950/40' },
+    ];
+
+    // デフォルトキー配置
+    const DEFAULT_KEYMAP = {
+      kick: 'Space',
+      snare: 'KeyS',
+      hihat_close: 'KeyA',
+      hihat_open: 'KeyF',
+      clap: 'KeyQ',
+      tom_high: 'KeyW',
+      tom_low: 'KeyE',
+      crash: 'KeyR',
+    };
+
+    let userKeymap = { ...DEFAULT_KEYMAP };
+    function loadSavedKeymap() {
+      try {
+        const saved = localStorage.getItem('webdrum_keymap_v2');
+        if (saved) {
+          userKeymap = Object.assign({}, DEFAULT_KEYMAP, JSON.parse(saved));
+        }
+      } catch (e) {
+        console.warn('Failed to load keymap', e);
+      }
+    }
+    function saveKeymap() {
+      try {
+        localStorage.setItem('webdrum_keymap_v2', JSON.stringify(userKeymap));
+      } catch (e) {}
+    }
+
+    // --- Web Audio API サウンド合成クラス ---
+    class DrumSynthEngine {
+      constructor() {
+        this.ctx = null;
+        this.masterGain = null;
+        this.noiseBuffer = null;
+        this.isMuted = false;
+        this.prevVolume = 0.8;
+      }
+
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          this.ctx = new AudioContext();
+          this.masterGain = this.ctx.createGain();
+          this.masterGain.gain.setValueAtTime(0.8, this.ctx.currentTime);
+          this.masterGain.connect(this.ctx.destination);
+          this.buildNoiseBuffer();
+        }
+        if (this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      setVolume(val) {
+        this.init();
+        if (this.masterGain && this.ctx) {
+          this.masterGain.gain.setValueAtTime(val, this.ctx.currentTime);
+        }
+      }
+
+      buildNoiseBuffer() {
+        const bufferSize = this.ctx.sampleRate * 2;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const output = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          output[i] = Math.random() * 2 - 1;
+        }
+        this.noiseBuffer = buffer;
+      }
+
+      play(partId, time = null) {
+        this.init();
+        const t = time !== null ? time : this.ctx.currentTime;
+        switch (partId) {
+          case 'kick': this.playKick(t); break;
+          case 'snare': this.playSnare(t); break;
+          case 'hihat_close': this.playHiHat(t, 0.05); break;
+          case 'hihat_open': this.playHiHat(t, 0.35); break;
+          case 'clap': this.playClap(t); break;
+          case 'tom_high': this.playTom(t, 200, 120); break;
+          case 'tom_low': this.playTom(t, 120, 70); break;
+          case 'crash': this.playCrash(t); break;
+          case 'metro': this.playMetronome(t); break;
+        }
+      }
+
+      // 1. Kick: 急速ピッチベンド + サイン波
+      playKick(t) {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(150, t);
+        osc.frequency.exponentialRampToValueAtTime(32, t + 0.12);
+
+        gain.gain.setValueAtTime(1.0, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+
+        osc.connect(gain);
+        gain.connect(this.masterGain);
+        osc.start(t);
+        osc.stop(t + 0.36);
+      }
+
+      // 2. Snare: 三角波トーン + ノイズ成分
+      playSnare(t) {
+        const osc = this.ctx.createOscillator();
+        const oscGain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(180, t);
+        osc.frequency.exponentialRampToValueAtTime(80, t + 0.08);
+        oscGain.gain.setValueAtTime(0.7, t);
+        oscGain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+        osc.connect(oscGain);
+        oscGain.connect(this.masterGain);
+        osc.start(t);
+        osc.stop(t + 0.13);
+
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = this.noiseBuffer;
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'highpass';
+        filter.frequency.setValueAtTime(1000, t);
+
+        const noiseGain = this.ctx.createGain();
+        noiseGain.gain.setValueAtTime(0.8, t);
+        noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+
+        noise.connect(filter);
+        filter.connect(noiseGain);
+        noiseGain.connect(this.masterGain);
+        noise.start(t);
+        noise.stop(t + 0.21);
+      }
+
+      // 3. Hi-Hat Closed/Open
+      playHiHat(t, decay) {
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = this.noiseBuffer;
+
+        const bandpass = this.ctx.createBiquadFilter();
+        bandpass.type = 'bandpass';
+        bandpass.frequency.setValueAtTime(10000, t);
+        bandpass.Q.setValueAtTime(1.8, t);
+
+        const highpass = this.ctx.createBiquadFilter();
+        highpass.type = 'highpass';
+        highpass.frequency.setValueAtTime(7000, t);
+
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(0.6, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + decay);
+
+        noise.connect(bandpass);
+        bandpass.connect(highpass);
+        highpass.connect(gain);
+        gain.connect(this.masterGain);
+
+        noise.start(t);
+        noise.stop(t + decay + 0.01);
+      }
+
+      // 4. Clap: 複数ノイズスナップ
+      playClap(t) {
+        const delays = [0, 0.012, 0.024, 0.036];
+        delays.forEach((delay, idx) => {
+          const noise = this.ctx.createBufferSource();
+          noise.buffer = this.noiseBuffer;
+          const filter = this.ctx.createBiquadFilter();
+          filter.type = 'bandpass';
+          filter.frequency.setValueAtTime(1200, t + delay);
+          filter.Q.setValueAtTime(1.5, t + delay);
+
+          const gain = this.ctx.createGain();
+          const isLast = idx === delays.length - 1;
+          const dur = isLast ? 0.18 : 0.01;
+          gain.gain.setValueAtTime(0.7, t + delay);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + delay + dur);
+
+          noise.connect(filter);
+          filter.connect(gain);
+          gain.connect(this.masterGain);
+
+          noise.start(t + delay);
+          noise.stop(t + delay + dur + 0.01);
+        });
+      }
+
+      // 5. Tom
+      playTom(t, startFreq, endFreq) {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(startFreq, t);
+        osc.frequency.exponentialRampToValueAtTime(endFreq, t + 0.18);
+
+        gain.gain.setValueAtTime(0.8, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+
+        osc.connect(gain);
+        gain.connect(this.masterGain);
+        osc.start(t);
+        osc.stop(t + 0.31);
+      }
+
+      // 6. Crash
+      playCrash(t) {
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = this.noiseBuffer;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'highpass';
+        filter.frequency.setValueAtTime(4500, t);
+
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(0.65, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 1.2);
+
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.masterGain);
+
+        noise.start(t);
+        noise.stop(t + 1.21);
+      }
+
+      // 7. Metronome
+      playMetronome(t) {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(1000, t);
+        gain.gain.setValueAtTime(0.2, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.03);
+
+        osc.connect(gain);
+        gain.connect(this.masterGain);
+        osc.start(t);
+        osc.stop(t + 0.035);
+      }
+    }
+
+    const synth = new DrumSynthEngine();
+
+    function toggleMute() {
+      const volSlider = document.getElementById('masterVolume');
+      const volIcon = document.getElementById('volumeIcon');
+      if (synth.isMuted) {
+        synth.isMuted = false;
+        synth.setVolume(synth.prevVolume);
+        volSlider.value = synth.prevVolume;
+        volIcon.className = 'fa-solid fa-volume-high text-slate-400 text-[11px]';
+      } else {
+        synth.prevVolume = parseFloat(volSlider.value) || 0.8;
+        synth.isMuted = true;
+        synth.setVolume(0);
+        volSlider.value = 0;
+        volIcon.className = 'fa-solid fa-volume-xmark text-rose-400 text-[11px]';
+      }
+    }
+
+    // --- 4 Mutually Exclusive Tab Switching Logic ---
+    const TAB_IDS = ['kit', 'pads', 'seq', 'score'];
+
+    function switchExclusiveTab(activeTabId) {
+      TAB_IDS.forEach(id => {
+        const panel = document.getElementById(`panel-${id}`);
+        const btn = document.getElementById(`tabBtn-${id}`);
+        if (!panel || !btn) return;
+
+        if (id === activeTabId) {
+          panel.classList.remove('hidden');
+          btn.className = 'tab-btn px-3 py-1.5 rounded-lg bg-indigo-600 text-white shadow transition flex items-center justify-center gap-1.5 whitespace-nowrap';
+        } else {
+          panel.classList.add('hidden');
+          btn.className = 'tab-btn px-3 py-1.5 rounded-lg text-slate-400 hover:text-slate-200 transition flex items-center justify-center gap-1.5 whitespace-nowrap';
+        }
+      });
+
+      if (activeTabId === 'score') {
+        resizeScoreCanvas();
+      }
+    }
+
+    // --- シーケンサー パターン管理 ---
+    const TOTAL_STEPS = 16;
+    let bpm = 110;
+    let isPlaying = false;
+    let isMetronomeOn = false;
+    let currentStep = 0;
+
+    const pattern = {
+      crash: new Array(TOTAL_STEPS).fill(false),
+      tom_high: new Array(TOTAL_STEPS).fill(false),
+      tom_low: new Array(TOTAL_STEPS).fill(false),
+      hihat_open: new Array(TOTAL_STEPS).fill(false),
+      hihat_close: new Array(TOTAL_STEPS).fill(false),
+      clap: new Array(TOTAL_STEPS).fill(false),
+      snare: new Array(TOTAL_STEPS).fill(false),
+      kick: new Array(TOTAL_STEPS).fill(false),
+    };
+
+    const PRESETS = {
+      basic8: {
+        kick:        [1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
+        snare:       [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
+        hihat_close: [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
+        hihat_open:  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+      },
+      fourFloor: {
+        kick:        [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0],
+        snare:       [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
+        clap:        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
+        hihat_close: [0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0],
+        hihat_open:  [0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0],
+      },
+      funk16: {
+        kick:        [1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0],
+        snare:       [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1],
+        hihat_close: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0],
+        hihat_open:  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0],
+        tom_low:     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
+      }
+    };
+
+    function loadPatternPreset(presetKey) {
+      clearSequencer();
+      const p = PRESETS[presetKey];
+      if (!p) return;
+      Object.keys(p).forEach(partId => {
+        if (pattern[partId]) {
+          pattern[partId] = p[partId].map(v => Boolean(v));
+        }
+      });
+      renderSequencerGrid();
+    }
+
+    function clearSequencer() {
+      Object.keys(pattern).forEach(k => {
+        pattern[k] = new Array(TOTAL_STEPS).fill(false);
+      });
+      renderSequencerGrid();
+    }
+
+    // --- 高精度ルックアヘッド・スケジューリング ---
+    let nextNoteTime = 0.0;
+    let scheduleStep = 0;
+    let timerID = null;
+    const lookahead = 25.0;
+    const scheduleAheadTime = 0.1;
+
+    function nextNote() {
+      const secondsPerBeat = 60.0 / bpm;
+      nextNoteTime += 0.25 * secondsPerBeat;
+      scheduleStep = (scheduleStep + 1) % TOTAL_STEPS;
+    }
+
+    function scheduleNote(stepNumber, time) {
+      if (isMetronomeOn && stepNumber % 4 === 0) {
+        synth.play('metro', time);
+      }
+
+      Object.keys(pattern).forEach(partId => {
+        if (pattern[partId][stepNumber]) {
+          synth.play(partId, time);
+        }
+      });
+
+      const diff = Math.max(0, (time - synth.ctx.currentTime) * 1000);
+      setTimeout(() => {
+        if (isPlaying) {
+          highlightStep(stepNumber);
+          Object.keys(pattern).forEach(partId => {
+            if (pattern[partId][stepNumber]) {
+              triggerVisualHit(partId);
+            }
+          });
+        }
+      }, diff);
+    }
+
+    function scheduler() {
+      while (nextNoteTime < synth.ctx.currentTime + scheduleAheadTime) {
+        scheduleNote(scheduleStep, nextNoteTime);
+        nextNote();
+      }
+      timerID = setTimeout(scheduler, lookahead);
+    }
+
+    function startPlayback() {
+      synth.init();
+      isPlaying = true;
+      scheduleStep = 0;
+      currentStep = 0;
+      nextNoteTime = synth.ctx.currentTime + 0.02;
+
+      document.getElementById('globalPlayIcon').className = 'fa-solid fa-stop';
+      document.getElementById('globalPlayText').textContent = '停止';
+      document.getElementById('globalPlayBtn').className = 'px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-md shadow-rose-600/30 transition flex items-center gap-1.5 active:scale-95';
+
+      scheduler();
+    }
+
+    function stopPlayback() {
+      isPlaying = false;
+      clearTimeout(timerID);
+      document.getElementById('globalPlayIcon').className = 'fa-solid fa-play';
+      document.getElementById('globalPlayText').textContent = 'ループ再生';
+      document.getElementById('globalPlayBtn').className = 'px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-600/30 transition flex items-center gap-1.5 active:scale-95';
+
+      clearStepHighlight();
+    }
+
+    document.getElementById('globalPlayBtn').addEventListener('click', () => {
+      if (isPlaying) stopPlayback();
+      else startPlayback();
+    });
+
+    // --- ビジュアルヒット演出 (SVG & Pad両対応) ---
+    function triggerVisualHit(partId) {
+      // 1. Pad visual feedback
+      const padEl = document.getElementById(`pad-${partId}`);
+      if (padEl) {
+        padEl.classList.add('pad-active');
+        setTimeout(() => padEl.classList.remove('pad-active'), 90);
+      }
+
+      // 2. SVG Drum Kit visual feedback
+      const svgEl = document.getElementById(`svg-part-${partId}`);
+      if (svgEl) {
+        const isCymbal = ['crash', 'hihat_close', 'hihat_open'].includes(partId);
+        const animClass = isCymbal ? 'cymbal-hit' : 'drum-hit';
+        svgEl.classList.remove('cymbal-hit', 'drum-hit');
+        void svgEl.offsetWidth;
+        svgEl.classList.add(animClass);
+        setTimeout(() => svgEl.classList.remove(animClass), isCymbal ? 360 : 220);
+      }
+    }
+
+    function hitPart(partId) {
+      synth.play(partId);
+      triggerVisualHit(partId);
+    }
+
+    // --- SVGドラムセット インタラクション登録 ---
+    function initSvgDrumKit() {
+      DRUM_PARTS.forEach(part => {
+        const svgEl = document.getElementById(`svg-part-${part.id}`);
+        if (!svgEl) return;
+
+        const onTrigger = (e) => {
+          e.preventDefault();
+          hitPart(part.id);
+        };
+
+        svgEl.addEventListener('mousedown', onTrigger);
+        svgEl.addEventListener('touchstart', onTrigger, { passive: false });
+      });
+
+      updateAllKeyBadges();
+    }
+
+    // --- 全てのキーバッジ更新 (ドラム絵, パッド, リズム譜手足カード) ---
+    function updateAllKeyBadges() {
+      // 1. SVG Drum Kit badges
+      DRUM_PARTS.forEach(part => {
+        const badge = document.getElementById(`badge-kit-${part.id}`);
+        if (badge) {
+          badge.textContent = formatKeyLabel(userKeymap[part.id] || '');
+        }
+      });
+
+      // 2. Rhythm Score Limb Cards (Hi-Hat, Snare, Kick)
+      const scoreBadgeHihat = document.getElementById('score-badge-hihat');
+      const scoreBadgeSnare = document.getElementById('score-badge-snare');
+      const scoreBadgeKick = document.getElementById('score-badge-kick');
+
+      if (scoreBadgeHihat) scoreBadgeHihat.textContent = formatKeyLabel(userKeymap['hihat_close'] || '');
+      if (scoreBadgeSnare) scoreBadgeSnare.textContent = formatKeyLabel(userKeymap['snare'] || '');
+      if (scoreBadgeKick) scoreBadgeKick.textContent = formatKeyLabel(userKeymap['kick'] || '');
+    }
+
+    // --- パッド描画 & キーイベント (Pad Mode) ---
+    function formatKeyLabel(code) {
+      if (!code) return '-';
+      if (code.startsWith('Key')) return code.replace('Key', '');
+      if (code.startsWith('Digit')) return code.replace('Digit', '');
+      if (code === 'Space') return 'Space';
+      return code;
+    }
+
+    function renderPads() {
+      const grid = document.getElementById('padsGrid');
+      grid.innerHTML = '';
+
+      DRUM_PARTS.forEach(part => {
+        const keycode = userKeymap[part.id] || '';
+        const keyLabel = formatKeyLabel(keycode);
+
+        const pad = document.createElement('div');
+        pad.id = `pad-${part.id}`;
+        pad.className = `cursor-pointer h-28 sm:h-32 rounded-2xl border p-3 flex flex-col justify-between transition-all duration-75 relative overflow-hidden group shadow-lg ${part.glowClass}`;
+        
+        pad.innerHTML = `
+          <div class="flex items-center justify-between pointer-events-none">
+            <span class="text-[11px] font-bold text-slate-400 group-hover:text-slate-200 transition">${part.name}</span>
+            <span class="px-2 py-0.5 rounded-md bg-slate-900/80 border border-slate-700/80 font-mono text-[10px] font-bold text-indigo-300">${keyLabel}</span>
+          </div>
+          <div class="text-center font-black tracking-wider text-sm sm:text-base pointer-events-none drop-shadow">
+            ${part.short}
+          </div>
+          <div class="flex items-center justify-between text-[10px] text-slate-500 pointer-events-none">
+            <span>${part.limb === 'foot' ? '右足' : (part.limb === 'left' ? '左手' : '右手')}</span>
+            <i class="fa-solid fa-volume-high text-[10px] opacity-40 group-hover:opacity-100 transition"></i>
+          </div>
+        `;
+
+        const triggerPad = (e) => {
+          e.preventDefault();
+          hitPart(part.id);
+        };
+
+        pad.addEventListener('mousedown', triggerPad);
+        pad.addEventListener('touchstart', triggerPad, { passive: false });
+
+        grid.appendChild(pad);
+      });
+    }
+
+    // キーボード打鍵イベント
+    window.addEventListener('keydown', (e) => {
+      // モーダル入力時やキー設定待機中などはバイパス
+      if (waitingForKeyPart) return;
+      if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'SELECT')) {
+        return;
+      }
+      
+      const code = e.code;
+      // 登録されているドラムパーツを逆引きして即座に発音
+      const targetPart = Object.keys(userKeymap).find(k => userKeymap[k] === code);
+      if (targetPart) {
+        e.preventDefault();
+        hitPart(targetPart);
+      }
+    });
+
+    // --- シーケンサー グリッド描画 ---
+    function renderSequencerGrid() {
+      const container = document.getElementById('sequencerGrid');
+      container.innerHTML = '';
+
+      const orderedParts = ['crash', 'hihat_open', 'hihat_close', 'tom_high', 'tom_low', 'clap', 'snare', 'kick'];
+
+      orderedParts.forEach(partId => {
+        const part = DRUM_PARTS.find(p => p.id === partId);
+        const row = document.createElement('div');
+        row.className = 'flex items-center gap-1.5';
+
+        const label = document.createElement('div');
+        label.className = 'w-24 shrink-0 text-xs font-bold text-slate-400 flex items-center justify-between pr-2 cursor-pointer hover:text-white';
+        label.innerHTML = `<span>${part.short}</span><i class="fa-solid fa-play text-[9px] opacity-40 hover:opacity-100"></i>`;
+        label.onclick = () => hitPart(partId);
+        row.appendChild(label);
+
+        const stepsWrap = document.createElement('div');
+        stepsWrap.className = 'grid grid-cols-16 gap-1 flex-1';
+
+        for (let s = 0; s < TOTAL_STEPS; s++) {
+          const btn = document.createElement('button');
+          const isQuarter = s % 4 === 0;
+          const isOn = pattern[partId][s];
+
+          btn.id = `step-btn-${partId}-${s}`;
+          btn.className = `h-8 sm:h-9 rounded-lg text-[10px] font-mono font-bold transition flex items-center justify-center border ${
+            isOn
+              ? 'bg-indigo-600 border-indigo-400 text-white shadow-[0_0_10px_rgba(99,102,241,0.6)]'
+              : (isQuarter ? 'bg-slate-800/90 border-slate-700/80 text-slate-400 hover:bg-slate-700' : 'bg-slate-900 border-slate-800 text-slate-600 hover:bg-slate-800')
+          }`;
+
+          btn.innerHTML = `<span class="opacity-40 text-[9px]">${s + 1}</span>`;
+
+          btn.onclick = () => {
+            pattern[partId][s] = !pattern[partId][s];
+            if (pattern[partId][s]) {
+              hitPart(partId);
+            }
+            renderSequencerGrid();
+          };
+
+          stepsWrap.appendChild(btn);
+        }
+
+        row.appendChild(stepsWrap);
+        container.appendChild(row);
+      });
+
+      renderStepIndicators();
+    }
+
+    function renderStepIndicators() {
+      const row = document.getElementById('stepIndicatorRow');
+      row.innerHTML = '';
+      for (let s = 0; s < TOTAL_STEPS; s++) {
+        const dot = document.createElement('div');
+        dot.id = `step-indicator-${s}`;
+        dot.className = `flex-1 h-1.5 rounded-full ${s % 4 === 0 ? 'bg-slate-700' : 'bg-slate-800'} transition-colors`;
+        row.appendChild(dot);
+      }
+    }
+
+    function highlightStep(step) {
+      currentStep = step;
+      for (let s = 0; s < TOTAL_STEPS; s++) {
+        const dot = document.getElementById(`step-indicator-${s}`);
+        if (dot) {
+          if (s === step) {
+            dot.className = 'flex-1 h-1.5 rounded-full bg-indigo-400 shadow-[0_0_8px_#818cf8]';
+          } else {
+            dot.className = `flex-1 h-1.5 rounded-full ${s % 4 === 0 ? 'bg-slate-700' : 'bg-slate-800'}`;
+          }
+        }
+      }
+    }
+
+    function clearStepHighlight() {
+      for (let s = 0; s < TOTAL_STEPS; s++) {
+        const dot = document.getElementById(`step-indicator-${s}`);
+        if (dot) {
+          dot.className = `flex-1 h-1.5 rounded-full ${s % 4 === 0 ? 'bg-slate-700' : 'bg-slate-800'}`;
+        }
+      }
+    }
+
+    // --- リズム譜 Canvas (Approach 3) ---
+    const scoreCanvas = document.getElementById('scoreCanvas');
+    const scoreCtx = scoreCanvas.getContext('2d');
+
+    function resizeScoreCanvas() {
+      const container = document.getElementById('scoreLaneContainer');
+      if (!container || !scoreCanvas) return;
+      scoreCanvas.width = container.clientWidth;
+      scoreCanvas.height = container.clientHeight;
+    }
+
+    window.addEventListener('resize', resizeScoreCanvas);
+
+    function changeScorePattern(presetKey) {
+      loadPatternPreset(presetKey);
+    }
+
+    function drawScoreLoop() {
+      if (!scoreCanvas) return;
+      const w = scoreCanvas.width;
+      const h = scoreCanvas.height;
+
+      scoreCtx.clearRect(0, 0, w, h);
+
+      const laneY = [h * 0.18, h * 0.5, h * 0.82];
+      const hitLineX = 112;
+
+      // Draw horizontal track guidance lines
+      laneY.forEach(y => {
+        scoreCtx.strokeStyle = 'rgba(51, 65, 85, 0.4)';
+        scoreCtx.lineWidth = 1;
+        scoreCtx.beginPath();
+        scoreCtx.moveTo(0, y);
+        scoreCtx.lineTo(w, y);
+        scoreCtx.stroke();
+      });
+
+      const secondsPerBeat = 60.0 / bpm;
+      const loopDuration = 4.0 * secondsPerBeat;
+      const now = synth.ctx ? synth.ctx.currentTime : 0;
+      const loopProgress = (now % loopDuration) / loopDuration;
+
+      const pixelsPerMeasure = 440;
+
+      const tracks = [
+        { partId: 'hihat_close', y: laneY[0], color: '#f59e0b', limb: '右手' },
+        { partId: 'snare',       y: laneY[1], color: '#06b6d4', limb: '左手' },
+        { partId: 'kick',        y: laneY[2], color: '#f43f5e', limb: '右足' },
+      ];
+
+      for (let m = -1; m <= 3; m++) {
+        const measureBaseX = hitLineX + (m - loopProgress) * pixelsPerMeasure;
+
+        // Bar line
+        scoreCtx.strokeStyle = 'rgba(148, 163, 184, 0.4)';
+        scoreCtx.lineWidth = 1.5;
+        scoreCtx.beginPath();
+        scoreCtx.moveTo(measureBaseX, 0);
+        scoreCtx.lineTo(measureBaseX, h);
+        scoreCtx.stroke();
+
+        // Quarter beats
+        for (let b = 1; b < 4; b++) {
+          const beatX = measureBaseX + (b * (pixelsPerMeasure / 4));
+          scoreCtx.strokeStyle = 'rgba(148, 163, 184, 0.15)';
+          scoreCtx.lineWidth = 1;
+          scoreCtx.beginPath();
+          scoreCtx.moveTo(beatX, 0);
+          scoreCtx.lineTo(beatX, h);
+          scoreCtx.stroke();
+        }
+
+        tracks.forEach(track => {
+          const notes = pattern[track.partId] || [];
+          notes.forEach((active, s) => {
+            if (!active) return;
+            const noteX = measureBaseX + (s * (pixelsPerMeasure / 16));
+
+            if (noteX < -30 || noteX > w + 30) return;
+
+            const distFromHit = Math.abs(noteX - hitLineX);
+            const isNearHit = distFromHit < 10;
+
+            scoreCtx.save();
+            scoreCtx.fillStyle = track.color;
+            scoreCtx.shadowColor = track.color;
+            scoreCtx.shadowBlur = isNearHit ? 18 : 6;
+
+            scoreCtx.beginPath();
+            scoreCtx.arc(noteX, track.y, isNearHit ? 9 : 7, 0, Math.PI * 2);
+            scoreCtx.fill();
+
+            scoreCtx.fillStyle = '#ffffff';
+            scoreCtx.beginPath();
+            scoreCtx.arc(noteX, track.y, 2.5, 0, Math.PI * 2);
+            scoreCtx.fill();
+
+            scoreCtx.restore();
+          });
+        });
+      }
+
+      requestAnimationFrame(drawScoreLoop);
+    }
+
+    // --- タップテンポ & BPM ---
+    const tapTimes = [];
+    document.getElementById('tapTempoBtn').addEventListener('click', () => {
+      const now = performance.now();
+      tapTimes.push(now);
+      if (tapTimes.length > 4) tapTimes.shift();
+
+      if (tapTimes.length >= 2) {
+        let diffSum = 0;
+        for (let i = 1; i < tapTimes.length; i++) {
+          diffSum += (tapTimes[i] - tapTimes[i - 1]);
+        }
+        const avgDiff = diffSum / (tapTimes.length - 1);
+        const calculatedBpm = Math.min(240, Math.max(40, Math.round(60000 / avgDiff)));
+        setBpm(calculatedBpm);
+      }
+    });
+
+    function setBpm(val) {
+      bpm = val;
+      document.getElementById('bpmSlider').value = val;
+      document.getElementById('bpmValue').textContent = val;
+    }
+
+    document.getElementById('bpmSlider').addEventListener('input', (e) => {
+      setBpm(parseInt(e.target.value, 10));
+    });
+
+    // メトロノーム切り替え
+    document.getElementById('metroToggleBtn').addEventListener('click', () => {
+      isMetronomeOn = !isMetronomeOn;
+      const btn = document.getElementById('metroToggleBtn');
+      const text = document.getElementById('metroText');
+      if (isMetronomeOn) {
+        btn.className = 'px-2.5 py-1.5 rounded-xl bg-indigo-600/30 hover:bg-indigo-600/40 text-indigo-300 border border-indigo-500/50 text-xs font-semibold flex items-center gap-1 transition';
+        text.textContent = 'クリック: ON';
+      } else {
+        btn.className = 'px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 border border-slate-700 text-xs font-semibold flex items-center gap-1 transition';
+        text.textContent = 'クリック: OFF';
+      }
+    });
+
+    // マスター音量
+    document.getElementById('masterVolume').addEventListener('input', (e) => {
+      const val = parseFloat(e.target.value);
+      synth.setVolume(val);
+      const icon = document.getElementById('volumeIcon');
+      if (val === 0) {
+        synth.isMuted = true;
+        icon.className = 'fa-solid fa-volume-xmark text-rose-400 text-[11px]';
+      } else {
+        synth.isMuted = false;
+        synth.prevVolume = val;
+        icon.className = 'fa-solid fa-volume-high text-slate-400 text-[11px]';
+      }
+    });
+
+    // --- キーボード割り当てモーダル ---
+    let waitingForKeyPart = null;
+
+    function openKeymapModal() {
+      renderKeymapList();
+      document.getElementById('keymapModal').classList.remove('hidden');
+    }
+
+    function closeKeymapModal() {
+      waitingForKeyPart = null;
+      document.getElementById('keymapModal').classList.add('hidden');
+      renderPads();
+      updateAllKeyBadges();
+    }
+
+    function resetKeymapToDefault() {
+      userKeymap = { ...DEFAULT_KEYMAP };
+      saveKeymap();
+      renderKeymapList();
+      renderPads();
+      updateAllKeyBadges();
+    }
+
+    function renderKeymapList() {
+      const container = document.getElementById('keymapList');
+      container.innerHTML = '';
+
+      DRUM_PARTS.forEach(part => {
+        const row = document.createElement('div');
+        row.className = 'bg-slate-950/80 p-2.5 rounded-xl border border-slate-800 flex items-center justify-between';
+
+        const isListening = waitingForKeyPart === part.id;
+        const currentCode = userKeymap[part.id] || '';
+
+        row.innerHTML = `
+          <div>
+            <div class="font-bold text-white text-xs">${part.name}</div>
+            <div class="text-[10px] text-slate-500">${part.short}</div>
+          </div>
+          <button id="keybind-btn-${part.id}" class="px-3 py-1.5 rounded-lg font-mono text-xs font-bold transition border ${
+            isListening 
+              ? 'bg-amber-500/20 text-amber-300 border-amber-500 animate-pulse'
+              : 'bg-slate-800 text-indigo-300 border-slate-700 hover:border-slate-500'
+          }">
+            ${isListening ? 'キーを押して...' : formatKeyLabel(currentCode)}
+          </button>
+        `;
+
+        const btn = row.querySelector(`#keybind-btn-${part.id}`);
+        btn.onclick = () => {
+          waitingForKeyPart = part.id;
+          renderKeymapList();
+        };
+
+        container.appendChild(row);
+      });
+    }
+
+    // キー設定打鍵リスナー
+    window.addEventListener('keydown', (e) => {
+      if (!waitingForKeyPart) return;
+      e.preventDefault();
+
+      Object.keys(userKeymap).forEach(k => {
+        if (userKeymap[k] === e.code) {
+          userKeymap[k] = '';
+        }
+      });
+
+      userKeymap[waitingForKeyPart] = e.code;
+      saveKeymap();
+      waitingForKeyPart = null;
+      renderKeymapList();
+      updateAllKeyBadges();
+    });
+
+    document.getElementById('openKeymapBtn').addEventListener('click', openKeymapModal);
+
+    // --- 初期ロード ---
+    function initApp() {
+      // 1. 保存されたキーマップの復元
+      loadSavedKeymap();
+      // 2. ドラムセット・パッド・シーケンサー等の初期レンダリング
+      initSvgDrumKit();
+      loadPatternPreset('basic8');
+      renderPads();
+      renderSequencerGrid();
+      resizeScoreCanvas();
+      drawScoreLoop();
+      // 3. 初期タブを「ドラムセット」に確実に指定
+      switchExclusiveTab('kit');
+      // 4. 初回起動時のキー入力無反応（フォーカス未取得）を防止
+      window.focus();
+    }
+
+    if (document.readyState === 'loading') {
+      window.addEventListener('DOMContentLoaded', initApp);
+    } else {
+      initApp();
+    }
+  </script>
+</body>
+</html>
